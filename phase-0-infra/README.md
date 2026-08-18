@@ -7,19 +7,19 @@ flowchart LR
     subgraph Local ["💻 Your local environment (WSL Ubuntu — user: kali)"]
         direction TB
         User((👤 kali))
-        
+
         subgraph Files ["📂 Terraform code (your machine)"]
             direction TB
             Main["📄 main.tf<br/>(the orchestrator)"]
             ModNet["📁 module/network"]
             ModACR["📁 module/acr"]
             ModAKS["📁 module/aks"]
-            
+
             Main -.-> ModNet & ModACR & ModAKS
         end
 
         CLI["🛠️ Terraform CLI<br/>(init, plan, apply)"]
-        
+
         User -->|"Writes commands"| CLI
         CLI -.->|"Reads your code"| Files
     end
@@ -34,7 +34,7 @@ flowchart LR
         direction TB
         API["⚙️ Azure Resource Manager<br/>(Azure's brain)"]
         Infra["🏗️ Your infrastructure<br/>(VNet, ACR, AKS)"]
-        
+
         API ==>|"Executes the physical build"| Infra
     end
 
@@ -49,7 +49,7 @@ flowchart LR
     classDef tf fill:#5c4ee5,stroke:#fff,stroke-width:2px,color:#fff
     classDef backend fill:#f39c12,stroke:#fff,stroke-width:2px,color:#fff
     classDef azure fill:#00a4ef,stroke:#fff,stroke-width:2px,color:#fff
-    
+
     class Local,User wsl
     class Files,Main,ModNet,ModACR,ModAKS files
     class CLI tf
@@ -70,31 +70,31 @@ The deployment provisions the foundational resources on Microsoft Azure using a 
 flowchart TB
     subgraph Azure ["☁️ Microsoft Azure (region: eastus)"]
         direction TB
-        
+
         subgraph RG ["📦 Resource group: forge-rg"]
             direction TB
-            
+
             ACR["🐳 Azure Container Registry<br/>(forgeacr1739)"]
-            
+
             subgraph VNet ["🕸️ Virtual network: forge-vnet<br/>Range: 10.0.0.0/16"]
                 direction TB
-                
+
                 subgraph Subnet ["🗂️ Subnet: forge-aks-subnet<br/>Range: 10.0.1.0/24"]
-                    
+
                     subgraph AKS ["☸️ AKS cluster: forge-aks"]
                         direction TB
                         API["🧠 Control plane<br/>(managed by Microsoft)"]
                         Node["🖥️ Worker node<br/>(aks-default-41526441-vmss000000)<br/>Size: Standard_D2s_v3"]
-                        
+
                         API ~~~ Node
                     end
-                    
+
                 end
             end
-            
+
             %% Managed Identity relationship (Role Assignment)
             Node -.->|"🔑 Managed identity<br/>(role: AcrPull)"| ACR
-            
+
         end
     end
 
@@ -106,7 +106,7 @@ flowchart TB
     classDef aks fill:#326ce5,stroke:#fff,stroke-width:2px,color:#fff
     classDef acr fill:#00a4ef,stroke:#fff,stroke-width:2px,color:#fff
     classDef api fill:#2c3e50,stroke:#fff,color:#fff
-    
+
     class Azure azure
     class RG rg
     class VNet vnet
@@ -158,13 +158,13 @@ flowchart TD
 
     %% Communication flow
     Cmd ===>|"Encrypted transit (HTTPS)"| CheckIP
-    
+
     CheckIP -- "❌ NO" --> Drop(("🗑️ Packet dropped<br/>(silently ignored)"))
     CheckIP -- "✅ YES" --> Auth
-    
+
     Auth -- "❌ NO" --> Deny(("🚫 Access denied<br/>(401 Unauthorized)"))
     Auth -- "✅ YES" --> Process
-    
+
     Process <==>|"Azure secure internal network"| Node
 
     %% Styles
@@ -173,12 +173,12 @@ flowchart TD
     classDef logic fill:#f39c12,stroke:#fff,stroke-width:2px,color:#fff
     classDef aks fill:#326ce5,stroke:#fff,stroke-width:2px,color:#fff
     classDef cert fill:#27ae60,stroke:#fff,stroke-width:2px,color:#fff
-    
+
     class Local,User local
     class Firewall firewall
     class CheckIP,Auth logic
     class AKS,ControlPlane,Node aks
-    class Kubeconfig cert 
+    class Kubeconfig cert
 ```
 
 *   **Secretless authentication (managed identities):** the AKS cluster is authorized to pull images from ACR through a managed identity with the `AcrPull` role, without static credentials. OIDC and *Workload Identity* were also enabled to support native, secretless pod authentication in later phases.
