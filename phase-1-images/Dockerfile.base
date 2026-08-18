@@ -1,0 +1,48 @@
+# ---- Stage 1: builder (instala herramientas del sistema sobre Wolfi) ----
+FROM cgr.dev/chainguard/wolfi-base:latest AS builder
+
+# apk es el gestor de paquetes de Wolfi. Instalamos runtime de Python,
+# nmap y las utilidades que la app necesita para operar.
+RUN apk add --no-cache \
+    python-3.11 \
+    py3.11-pip \
+    nmap \
+    curl \
+    ca-certificates
+
+# Trivy: instalamos el binario oficial en una ruta estable
+RUN curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+    | sh -s -- -b /usr/local/bin
+
+# ---- Stage 2: runtime final ----
+FROM cgr.dev/chainguard/wolfi-base:latest
+
+# Metadatos OCI (trazabilidad: conectan la imagen con su origen y build)
+ARG BUILD_DATE
+ARG VCS_REF
+ARG VERSION="0.1.0"
+ARG GITLAB_USER="alejandrochuang"
+LABEL org.opencontainers.image.title="forge-base" \
+      org.opencontainers.image.description="Hardened base image for SecurityScanService" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.revision="${VCS_REF}" \
+      org.opencontainers.image.source="https://gitlab.com/${GITLAB_USER}/forge-images"
+
+# Reinstalamos los paquetes de runtime en la imagen final (sin las utilidades
+# de build que no necesitamos en produccion).
+RUN apk add --no-cache \
+    python-3.11 \
+    py3.11-pip \
+    nmap \
+    ca-certificates
+
+# Copiamos el binario de trivy desde el builder (evita reejecutar el instalador)
+COPY --from=builder /usr/local/bin/trivy /usr/local/bin/trivy
+
+# Usuario no privilegiado. Wolfi ya trae el usuario 'nonroot' (uid 65532),
+# lo reutilizamos en vez de crear uno nuevo.
+USER 65532
+
+# Comando por defecto: shell de python (la app sobreescribe esto en Fase 2)
+ENTRYPOINT ["python3.11"]

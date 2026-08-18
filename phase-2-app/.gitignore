@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+venv/
+.venv/
+.env
+*.cdx.json
+build.env
+sbom-app.cdx.json
+*:Zone.Identifier

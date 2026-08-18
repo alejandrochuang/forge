@@ -1,0 +1,26 @@
+# ── Terraform ──
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+**/*.tfvars
+**/.terraform.lock.hcl
+**/tfplan
+
+# ── Secretos ──
+**/*.key
+**/*.pem
+**/.env
+**/.env.*
+**/credentials*
+
+# ── Python ──
+**/__pycache__/
+**/*.pyc
+**/.venv/
+**/venv/
+
+# ── Windows / WSL ──
+**/*Zone.Identifier
+
+# ── Misc ──
+**/.DS_Store

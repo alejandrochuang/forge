@@ -1,0 +1,5 @@
+.git/
+*.md
+Makefile
+scripts/
+.gitlab-ci.yml

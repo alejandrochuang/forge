@@ -1,0 +1,10 @@
+# Un CVE por linea, SIEMPRE con justificacion escrita. Revisar en cada rebuild.
+#
+# Ambas CVEs viven en el binario 'trivy' incrustado en forge-base (heredadas de Fase 1),
+# NO en el SO Wolfi ni en las dependencias Python de la app (ambos con 0 CVEs).
+# El binario esta inerte en la imagen: no se ejecuta en arranque; la app lo invoca de
+# forma controlada (allowlist: solo trivy contra ubuntu:latest). Sin fix upstream
+# publicado en el binario a fecha de este build. Riesgo residual aceptado y documentado.
+
+CVE-2026-50151  # oras-go: credential forwarding via unvalidated Location header; en binario trivy inerte, no explotable en reposo
+CVE-2026-39822  # Go stdlib os.Root symlink traversal; en binario trivy inerte, no explotable en reposo

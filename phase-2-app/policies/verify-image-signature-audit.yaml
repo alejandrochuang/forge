@@ -1,0 +1,32 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-forge-app-signature
+spec:
+  webhookTimeoutSeconds: 30
+  failurePolicy: Fail
+  rules:
+    - name: verify-keyless-signature
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - forge
+      verifyImages:
+        - failureAction: Audit
+          mutateDigest: false
+          verifyDigest: false
+          imageReferences:
+            - "forgeacr8140.azurecr.io/forge-app*"
+          imageRegistryCredentials:
+            secrets:
+              - acr-kyverno-creds
+          attestors:
+            - entries:
+                - keyless:
+                    subject: "https://gitlab.com/alejandrochuang/forge-app//.gitlab-ci.yml@refs/heads/main"
+                    issuer: "https://gitlab.com"
+                    rekor:
+                      url: https://rekor.sigstore.dev

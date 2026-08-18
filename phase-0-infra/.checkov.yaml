@@ -1,0 +1,36 @@
+# forge-infra/.checkov.yaml
+framework:
+  terraform
+
+# Solo fallará el pipeline si encuentra problemas de severidad ALTA o CRÍTICA
+soft-fail-on:
+  - LOW
+  - MEDIUM
+
+skip-check:
+  # Excepciones de AKS (Lab)
+  - CKV_AZURE_4    # Falta Log Analytics (observabilidad avanzada para Fase 4)
+  - CKV_AZURE_116  # Falta Azure Policy Add-on (se abordará en despliegue avanzado)
+  - CKV_AZURE_117  # Falta Disk Encryption Set (coste/complejidad innecesaria en lab)
+  - CKV_AZURE_170  # Requiere Paid SKU (usamos gratuito para control de coste)
+  - CKV_AZURE_171  # Falta canal de upgrade (se configurará en entornos estables)
+  - CKV_AZURE_172  # Falta Secrets Store CSI Driver (se usará en fase de apps)
+  - CKV_AZURE_168  # Mínimo de 50 pods (inviable para laboratorio pequeño)
+  - CKV_AZURE_226  # Requiere discos efímeros (coste elevado)
+  - CKV_AZURE_227  # Requiere encriptación de discos extra (coste/complejidad)
+  - CKV_AZURE_232  # Restricción de pods en nodos (infraestructura pequeña)
+  - CKV_AZURE_115  # Cluster privado (requiere conectividad compleja fuera de scope)
+  - CKV2_AZURE_29  # Requiere Azure CNI (usamos kubenet para simplificar red)
+  - CKV2_AZURE_31  # Falta NSG en subred (gestionado por AKS internamente)
+  - CKV_AZURE_7    # Excepcionado: Network plugin "kubenet" no soporta 'azure' policy
+
+  # Excepciones de ACR (Lab)
+  - CKV_AZURE_141  # Admin account (documentado como control verificado)
+  - CKV_AZURE_164  # Imágenes firmadas (requiere configuraciones avanzadas)
+  - CKV_AZURE_163  # Vulnerability scanning (se activará en pipeline CI)
+  - CKV_AZURE_237  # Data endpoints (innecesario para este alcance)
+  - CKV_AZURE_166  # Cuarentena/verificación de imágenes (exceso de gestión para lab)
+  - CKV_AZURE_165  # Geo-replicación (innecesaria para una sola región)
+  - CKV_AZURE_233  # Zona redundante (SKU Basic no lo soporta)
+  - CKV_AZURE_139  # Red pública deshabilitada (necesaria para acceso desde fuera)
+  - CKV_AZURE_167  # Política de retención de imágenes (se configurará tras pruebas)

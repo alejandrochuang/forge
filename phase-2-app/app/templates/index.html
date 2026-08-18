@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Security Scan UI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body{font-family:system-ui, sans-serif;max-width:900px;margin:2rem auto;padding:0 1rem}
+    form{display:grid;gap:.5rem;grid-template-columns:1fr 2fr}
+    label{align-self:center}
+    input,select,button{padding:.5rem}
+    pre{background:#111;color:#eee;padding:1rem;border-radius:.5rem;white-space:pre-wrap}
+  </style>
+</head>
+<body>
+  <h1>Security Scan as a Service</h1>
+  {# FP de stack: la app es FastAPI + Jinja2, no Django; el tag csrf_token de Django no existe aqui.
+     /ui/scan no maneja sesion ni estado sensible y solo acepta targets de una allowlist.
+     Ver docs/reports/pre-commit-triage.md (hallazgo 2.2). #}
+  {# nosemgrep: python.django.security.django-no-csrf-token.django-no-csrf-token #}
+  <form method="post" action="/ui/scan">
+    <label for="scan_type">Tipo:</label>
+    <select id="scan_type" name="scan_type" required>
+      <option value="url"{% if scan_type == 'url' %} selected{% endif %}>URL (nmap)</option>
+      <option value="docker"{% if scan_type == 'docker' %} selected{% endif %}>Docker (trivy)</option>
+    </select>
+    <!--
+    <label for="target">Target:</label>
+    <input id="target" name="target" placeholder="scanme.nmap.org o ubuntu:latest" required />
+    -->
+    <label for="target">Target:</label>
+    <select id="target" name="target" required>
+        <option value="scanme.nmap.org"{% if target == 'scanme.nmap.org' %} selected{% endif %}>scanme.nmap.org</option>
+        <option value="ubuntu:latest"{% if target == 'ubuntu:latest' %} selected{% endif %}>ubuntu:latest</option>
+    </select>
+
+    <div></div>
+    <button type="submit">Ejecutar</button>
+  </form>
+
+  {% if output %}
+    <form method="get" action="/">
+      <button type="submit">Reset</button>
+    </form>
+    <h2>Resultado</h2>
+    <p><strong>{{ scan_type }} → {{ target }}</strong></p>
+    <pre>{{ output }}</pre>
+  {% endif %}
+</body>
+</html>

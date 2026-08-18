@@ -1,0 +1,11 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars.local
+override.tf
+override.tf.json
+.terraform.lock.hcl
+*.pem
+*.key
+azure-creds.json

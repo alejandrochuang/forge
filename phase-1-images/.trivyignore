@@ -1,0 +1,28 @@
+# =============================================================================
+# .trivyignore — excepciones de vulnerabilidades JUSTIFICADAS
+# Regla: cada CVE se lee, se razona su explotabilidad en ESTE contexto,
+# y se documenta. Nunca se silencia a ciegas. Revisar en cada rebuild.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# CVE-2026-50151 — oras.land/oras-go/v2 (HIGH, fixed en 2.6.1)
+# Vulnerabilidad: reenvio de credenciales via header Location no validado
+# al SUBIR blobs a un registro OCI.
+# Justificacion: reside en el binario de trivy (herramienta empaquetada),
+# NO en el SO base ni en la app. La imagen base no ejecuta trivy: lo
+# transporta para que la app lo use en Fase 2. El vector (push a registro)
+# no es alcanzable en reposo. El fix existe en la libreria pero el binario
+# oficial de trivy aun no lo incorpora (no accionable por nuestra parte).
+# Revision: eliminar en cuanto Aqua publique un binario recompilado.
+CVE-2026-50151
+
+# -----------------------------------------------------------------------------
+# CVE-2026-39822 — stdlib / Go os.Root (HIGH, fixed en 1.25.12 / 1.26.5)
+# Vulnerabilidad: symlink following -> directory traversal via os.Root.
+# Justificacion: igual que la anterior — en el binario de trivy, no en la
+# superficie de ejecucion de la base. Requiere ejecutar trivy procesando
+# rutas maliciosas; en la imagen base el binario esta presente pero inerte.
+# Fix disponible en stdlib de Go, pendiente de que el binario de trivy lo
+# incorpore. No accionable por nuestra parte a dia de hoy.
+# Revision: eliminar cuando el binario de trivy se recompile con Go parcheado.
+CVE-2026-39822

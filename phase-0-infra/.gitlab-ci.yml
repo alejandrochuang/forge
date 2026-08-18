@@ -1,0 +1,63 @@
+stages:
+  - validate
+  - scan
+  - plan
+  - apply
+  - destroy
+
+variables:
+  TF_ROOT: "${CI_PROJECT_DIR}"
+  TF_IN_AUTOMATION: "true"
+
+default:
+  image: 
+    name: hashicorp/terraform:1.9.8
+    entrypoint: [""]
+  before_script:
+    - cd "${TF_ROOT}"
+    - terraform init -input=false
+
+fmt-validate:
+  stage: validate
+  script:
+    - terraform fmt -check -recursive
+    - terraform validate
+
+checkov:
+  stage: scan
+  image:
+    name: bridgecrew/checkov:latest
+    entrypoint: [""]
+  before_script: []
+  script:
+    - checkov --config-file .checkov.yaml --directory . --compact
+
+plan:
+  stage: plan
+  script:
+    - terraform plan -input=false -out=tfplan
+  artifacts:
+    paths:
+      - tfplan
+    expire_in: 1 day
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+apply:
+  stage: apply
+  script:
+    - terraform apply -input=false tfplan
+  dependencies:
+    - plan
+  when: manual
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+destroy:
+  stage: destroy
+  script:
+    - terraform destroy -input=false -auto-approve
+  when: manual
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
