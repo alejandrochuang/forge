@@ -1,36 +1,46 @@
+<!-- Save as README.md at the root of the forge/ repo -->
 
 # 🛡️ Forge — Secure Software Supply Chain on Azure
 
 > **Can I prove that what runs in my cluster is exactly what I built — hardened, auditable, and untampered?**
 > The industry default answer is *"we trust so."* This project's answer is **"I can prove it"** — cryptographically, for every build, with no human in the loop.
 
-A four-phase DevSecOps project that builds a **complete, verifiable software supply chain**: from Infrastructure-as-Code foundations, through a hardened signed base image and a signed application, to a Kubernetes **admission gate where the cluster itself refuses to run anything the pipeline didn't sign.**
+A four-phase DevSecOps project that builds a **complete, verifiable software supply chain** on Azure: from Infrastructure-as-Code foundations, through a hardened signed base image and a signed application, to a Kubernetes **admission gate where the cluster itself refuses to run anything the pipeline didn't sign.**
 
 ---
 
-## The chain, in one picture
+## Objectives
 
-```text
-   📝 source + IaC
-        │
-   ── BUILD-TIME · produces cryptographic evidence ────────────────
-        │
-   Phase 0  ──►  Phase 1  ──►  Phase 2
-   IaC scanned   hardened      hash-pinned deps
-   before apply  signed base   SBOM + provenance + signature
-        │
-        │   ⏸  the artifact then sits in the registry for days/weeks
-        │
-   ── DEPLOY-TIME · enforces that evidence ────────────────────────
-        │
-   Phase 3  ──►  the cluster REJECTS any image not signed
-                 by this exact pipeline identity
-        │
-        ▼
-   🟢 verified pod running in AKS
-```
+What this lab set out to prove, end to end:
 
-**Build securely → sign → deploy only what verifies.** Both build-time and deploy-time covered — most projects stop at one.
+- 🏗️ **Provision cloud infrastructure as code**, security-scanned *before* it exists — no click-ops, no drift, no secrets in state.
+- 🔒 **Harden the base image once, centrally**, and cut inherited attack surface — the *golden base* pattern every app inherits from.
+- 📦 **Make the application's supply chain verifiable** — dependencies pinned by hash, a signed inventory (SBOM), and build provenance.
+- ✍️ **Sign every artifact without managing a key** — keyless signing, where the pipeline's own ephemeral identity is the credential.
+- 🚦 **Enforce it at deploy time** — a cluster that actively *rejects* any image not signed by the expected pipeline identity, not one that merely hopes it was.
+- 📋 **Document the trade-offs honestly** — every accepted risk written down with its rationale, not silenced.
+
+---
+
+## System architecture
+
+Four phases building one verifiable path — from a developer's `git push` to a running pod on AKS, over real Azure infrastructure.
+
+![Forge system architecture: GitLab CI and Sigstore on the left, Azure (ACR with signed base and app images, AKS with Kyverno and the running pod) on the right, with each phase mapped onto the infrastructure it acts on](docs/img/forge-system-architecture.png)
+
+- **Phase 0** provisions the ground (VNet · AKS · ACR · Workload Identity).
+- **Phases 1–2** fill the registry with signed artifacts (the base, then the app built on it).
+- **Phase 3** is the gate on AKS that enforces those signatures before a pod is scheduled.
+
+---
+
+## The chain of custody, end to end
+
+The heart of the project: integrity is not a single check but a **chain of digests**, where every link cryptographically pins the one before it. The same app digest is what gets signed, attested, verified and run — a mutable tag never carries the trust in between.
+
+![End-to-end integrity: five links from forge-base to the running pod, each pinning the previous by its content hash, with the app digest preserved unbroken through sign, attest, verify and run](docs/img/forge-end-to-end-integrity.png)
+
+**Break any link — swap bytes, re-point a tag, substitute a package — and its digest changes, so the next link's pin no longer matches and nothing downstream verifies. Trust is not declared; it is arithmetic.**
 
 ---
 
@@ -43,7 +53,7 @@ A four-phase DevSecOps project that builds a **complete, verifiable software sup
 | **2** | **Supply chain** | Is the app exactly what I built, from a known base? | **16 deps pinned by version + SHA-256 hash, 0 CVEs** | [`phase-2-app/`](./phase-2-app) |
 | **3** | **Admission gate** | Does my platform *require* all of the above? | Cluster **rejects unsigned images at deploy time** | [phase 3 →](./phase-2-app/docs/phase3-admission-gate.md) |
 
-Each phase has its own detailed README. Read top to bottom — the project is linear and cumulative.
+Each phase has its own detailed README. Read top to bottom — the project is linear and cumulative. *(Phase 3 lives inside `phase-2-app/`, since the admission gate governs that app's own image.)*
 
 ---
 
@@ -60,29 +70,39 @@ Phases 0–2 *produce* proof (Trivy, SBOM, signature) — but none of them *prev
 
 ---
 
-## What this demonstrates (for the reader in a hurry)
+## Consolidated results
 
-| | |
-|:--|:--|
-| 🧱 **Defense in depth, end to end** | SAST → IaC scan → hardened base → signed supply chain → admission gate |
-| 🔐 **Least privilege, tested under fire** | The verifier got a read-only token scoped to one repository — not the CI Service Principal. When it leaked in a CLI log, blast radius was *one repo, read-only, 7 days*. **Least privilege doesn't prevent leaks — it caps what they cost.** |
-| 📋 **Chosen risk, not inherited** | Every security exception documented with written justification and a review date — not silenced |
-| 🔍 **Diagnose before you patch** | Every pipeline failure resolved by root cause, distinguishing config error from transient infra failure |
-| 📐 **Real-world adaptation** | The runbook was treated as intent, not script — its assumptions (private registry, deprecated API fields, a self-blocking policy) were found and fixed against the live environment |
+What each phase moved from "industry default" to "provable" — in numbers.
+
+![Consolidated results: −86% HIGH/CRITICAL CVEs in Phase 1, 0 CVEs in app dependencies in Phase 2, admission enforced in Phase 3, plus an industry-default-versus-Forge comparison table](docs/img/forge-consolidated-results.png)
+
+Risk went from *inherited and unmeasured* to **chosen, attributable, and auditable** — and every remaining exception carries a written justification and a review date.
 
 ---
 
-## The moment it became real
+## 🧨 The residual risk that collected its invoice
 
-Days after the app was built, scanned clean, signed, and deployed, **a new HIGH CVE was published for the Python in the base image.** A routine push turned the pipeline red — *same bytes, different verdict.*
+Phase 2 documented a known trade-off: pinning the base by digest protects against image substitution — but it also freezes you on a fixed version of everything inside it. A week later, that note stopped being theoretical.
 
-Resolved at the source (rebuild the base, bump the pinned digest), never silenced with an exception — because a patch existed, and **fix comes before except.** The incident surfaced three truths a permanently-green pipeline never would:
+- 🛡️ **The gate was set to `--ignore-unfixed`** — block only vulnerabilities that *have* a patch, since a flaw with no available fix isn't actionable.
+- ✅ **On build day it passed, correctly** — the base image's Python carried a HIGH CVE with no upstream fix yet, so the gate let it through.
+- 🔴 **A week later, the same bytes turned red** — upstream shipped the patched Python; the finding flipped from *unfixable* to *actionable* overnight, and the exception no longer applied.
+- 🔧 **Fixed at the source, not silenced** — rebuild the base so it pulls the patched Python, then bump the pinned digest. No `.trivyignore` entry: a patch existed now, and *fix comes before except*.
 
-- A green scan is a **photograph, not a contract** — it certifies the world on scan day → production needs continuous re-scanning, not a build check that expires.
-- A misconfigured CI dependency (`needs:`) **silently bypassed a gate** — only visible once a gate actually fired.
-- The digest pin **absorbed a real tag-repointing attack** — the running pod never flinched, because the cluster had pinned it to its verified digest.
+> **The pin that guarantees integrity is the same pin that holds you on yesterday's packages.** Same bytes, a week apart, opposite verdicts — writing down what you *didn't* fix is how you recognise it when it bites. → [Full incident in Phase 3](./phase-2-app/docs/phase3-admission-gate.md)
 
-*The attacks the earlier phases argue about in theory were observed and neutralized in practice.*
+---
+
+## Lessons learned
+
+What an extended, end-to-end lab teaches that a single demo can't:
+
+- **A green scan is a photograph, not a contract.** It certifies the world on scan day, against that day's vulnerability database. Build-time gates can't catch a CVE disclosed later — production needs *continuous* re-scanning of deployed artifacts.
+- **The best secret is one that doesn't exist.** Keyless signing and Workload Identity remove the long-lived credential entirely. This lab hit *three* expired- or desynced-credential incidents — every one of them an argument against storing secrets in the first place.
+- **Least privilege doesn't prevent leaks — it caps their cost.** A scoped, read-only token leaked in a CLI log; the blast radius was one repository for seven days, instead of the whole subscription.
+- **Documenting residual risk is predicting it.** The Phase 2 note about manual digest pinning named the exact failure mode that then occurred. Honesty about what you *didn't* fix is a control, not a confession.
+- **Diagnose before you patch.** Every pipeline failure was resolved by root cause — distinguishing a configuration error (fixed in the file) from a transient infrastructure failure (made resilient), and treating the runbook as intent, not script.
+- **Verification is what turns evidence into a control.** Signing, scanning and SBOMs are all passive until something *checks* them at the point of deployment. The gate is the difference between having proof and enforcing it.
 
 ---
 
@@ -102,7 +122,7 @@ forge/
 ├── phase-1-images/    Hardened signed golden base (Wolfi · Trivy · cosign)
 ├── phase-2-app/       Signed application supply chain
 │   └── docs/phase3-admission-gate.md   ← Phase 3: Kyverno admission gate
-└── docs/              Cross-phase documentation
+└── docs/img/          Figures for this overview
 ```
 
 ## Status
