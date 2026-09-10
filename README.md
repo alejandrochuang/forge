@@ -86,8 +86,8 @@ Phase 2 documented a known trade-off: pinning the base by digest protects agains
 
 - 🛡️ **The gate was set to `--ignore-unfixed`** — block only vulnerabilities that *have* a patch, since a flaw with no available fix isn't actionable.
 - ✅ **On build day it passed, correctly** — the base image's Python carried a HIGH CVE with no upstream fix yet, so the gate let it through.
-- 🔴 **A week later, the same bytes turned red** — upstream shipped the patched Python; the finding flipped from *unfixable* to *actionable* overnight, and the exception no longer applied.
-- 🔧 **Fixed at the source, not silenced** — rebuild the base so it pulls the patched Python, then bump the pinned digest. No `.trivyignore` entry: a patch existed now, and *fix comes before except*.
+- 🔴 **A week later, the same bytes turned red** — a patched version of the base image's Python was released, so the finding flipped from *unfixable* to *actionable*, and the exception no longer applied.
+- 🔧 **Fixed at the source, not silenced** — rebuild the base so it pulls the patched Python, then point the app at that rebuilt base by its new digest. No `.trivyignore` entry: a patch existed now, and *fix comes before except*.
 
 > **The pin that guarantees integrity is the same pin that holds you on yesterday's packages.** Same bytes, a week apart, opposite verdicts — writing down what you *didn't* fix is how you recognise it when it bites. → [Full incident in Phase 3](./phase-2-app/docs/phase3-admission-gate.md)
 
