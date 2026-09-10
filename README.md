@@ -80,7 +80,7 @@ Risk went from *inherited and unmeasured* to **chosen, attributable, and auditab
 
 ---
 
-## 🧨 The residual risk that collected its invoice
+## A CVE that turned fixable after the build — and turned the gate red
 
 Phase 2 documented a known trade-off: pinning the base by digest protects against image substitution — but it also freezes you on a fixed version of everything inside it. A week later, that note stopped being theoretical.
 
